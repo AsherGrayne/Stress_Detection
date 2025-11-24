@@ -1,0 +1,31 @@
+# Data files
+latest_sensor_data.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Model files (optional - uncomment if you don't want to commit models)
+# saved_models/*.joblib
+
+# Streamlit
+.streamlit/
+
