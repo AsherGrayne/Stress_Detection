@@ -92,19 +92,106 @@ def predict_stress(model, features):
         st.error(f"Prediction error: {e}")
         return None, None
 
+if 'simulated_data_index' not in st.session_state:
+    st.session_state.simulated_data_index = 0
+
 def load_sensor_data(data_source='real'):
     if data_source == 'simulated':
-        data_file = 'latest_sensor_data_dataset.json'
+        csv_path = os.path.join("datasets", "balanced_data.csv")
+        if os.path.exists(csv_path):
+            try:
+                df = pd.read_csv(csv_path)
+                if len(df) > 0:
+                    current_index = st.session_state.simulated_data_index % len(df)
+                    row = df.iloc[current_index]
+                    
+                    datetime_str = str(row.get('datetime', ''))
+                    dt_info = parse_datetime_for_simulated(datetime_str)
+                    
+                    sensor_data = {
+                        'bpm': float(row['HR']) if pd.notna(row['HR']) else 0.0,
+                        'temperature': float(row['TEMP']) if pd.notna(row['TEMP']) else 0.0,
+                        'accel_x': float(row['X']) / 100.0 if pd.notna(row['X']) else 0.0,
+                        'accel_y': float(row['Y']) / 100.0 if pd.notna(row['Y']) else 0.0,
+                        'accel_z': float(row['Z']) / 100.0 if pd.notna(row['Z']) else 0.0,
+                        'datetime_year': dt_info['year'],
+                        'datetime_month': dt_info['month'],
+                        'datetime_day': dt_info['day'],
+                        'datetime_hour': dt_info['hour'],
+                        'datetime_dow': dt_info['dow'],
+                        'timestamp': dt_info['timestamp'],
+                        'last_updated': datetime.now().isoformat()
+                    }
+                    
+                    st.session_state.simulated_data_index += 1
+                    return sensor_data
+            except Exception as e:
+                st.error(f"Error loading simulated data: {e}")
+                return None
+        return None
     else:
         data_file = 'latest_sensor_data.json'
-    
-    if os.path.exists(data_file):
-        try:
-            with open(data_file, 'r') as f:
-                return json.load(f)
-        except:
-            return None
-    return None
+        if os.path.exists(data_file):
+            try:
+                with open(data_file, 'r') as f:
+                    return json.load(f)
+            except:
+                return None
+        return None
+
+def parse_datetime_for_simulated(dt_str):
+    try:
+        if pd.isna(dt_str) or dt_str == '':
+            now = datetime.now()
+            return {
+                'year': now.year,
+                'month': now.month,
+                'day': now.day,
+                'hour': now.hour,
+                'dow': now.weekday(),
+                'timestamp': now.isoformat() + 'Z'
+            }
+        
+        dt_str = str(dt_str).strip()
+        
+        if ':' in dt_str and len(dt_str.split(':')) == 2:
+            parts = dt_str.split(':')
+            hour = int(float(parts[0]))
+            minute_sec = parts[1].split('.')[0]
+            minute = int(float(minute_sec)) if minute_sec else 0
+            second = int(float(parts[1].split('.')[1])) if '.' in parts[1] and len(parts[1].split('.')) > 1 else 0
+            
+            now = datetime.now()
+            dt = datetime(now.year, now.month, now.day, hour, minute, second)
+            
+            return {
+                'year': dt.year,
+                'month': dt.month,
+                'day': dt.day,
+                'hour': dt.hour,
+                'dow': dt.weekday(),
+                'timestamp': dt.isoformat() + 'Z'
+            }
+        
+        dt = pd.to_datetime(dt_str)
+        return {
+            'year': dt.year,
+            'month': dt.month,
+            'day': dt.day,
+            'hour': dt.hour,
+            'dow': dt.weekday(),
+            'timestamp': dt.isoformat() + 'Z'
+        }
+    except Exception as e:
+        now = datetime.now()
+        return {
+            'year': now.year,
+            'month': now.month,
+            'day': now.day,
+            'hour': now.hour,
+            'dow': now.weekday(),
+            'timestamp': now.isoformat() + 'Z'
+        }
 
 def add_sensor_reading(sensor_data, reading_list, value_key, timestamp_key='last_updated'):
     if sensor_data and value_key in sensor_data and timestamp_key in sensor_data:
