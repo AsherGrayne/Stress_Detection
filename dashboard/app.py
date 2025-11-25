@@ -41,11 +41,15 @@ MODEL_PATHS = {
 def load_model(model_name):
     try:
         model_path = MODEL_PATHS.get(model_name)
-        if model_path and os.path.exists(model_path):
-            return joblib.load(model_path)
-        return None
+        if not model_path:
+            return None
+        
+        if not os.path.exists(model_path):
+            return None
+        
+        model = joblib.load(model_path)
+        return model
     except Exception as e:
-        st.error(f"Error loading model: {e}")
         return None
 
 @st.cache_data
