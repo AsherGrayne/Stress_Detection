@@ -5,14 +5,10 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
-# -------------------------------------------------------
-# DIRECTLY EDIT THIS ONLY
-CSV_PATH = "merged_data_datetime_broken.csv"   # <--- set your CSV file here
+CSV_PATH = "merged_data_datetime_broken.csv"
 LABEL = "label"
 
-# Number of "initiators" (here used as n_estimators of RF)
 INITIATORS = [100,150,200,500,600,2000,4000,6000,8000,10000]
-# -------------------------------------------------------
 
 FEATURES = [
     'X','Y','Z','EDA','HR','TEMP',
@@ -51,7 +47,6 @@ def main():
 
         accuracies.append(acc)
 
-    # Save plot
     os.makedirs("epoch", exist_ok=True)
     output_file = "epoch/random_forest_initiators_accuracy.png"
 

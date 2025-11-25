@@ -1,10 +1,3 @@
-# knn_initiators.py
-"""
-KNN classifier where "initiators" = n_neighbors.
-Plots Accuracy vs Number of Initiators and saves PNG to epoch/ folder.
-Edit only the CSV_PATH below.
-"""
-
 import os
 import pandas as pd
 import numpy as np
@@ -13,14 +6,10 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
-# -------------------------------------------------------
-# EDIT THIS ONLY
-CSV_PATH = "merged_data_datetime_broken.csv"    # <--- set your dataset file here
+CSV_PATH = "merged_data_datetime_broken.csv"
 LABEL = "label"
 
-# initiators → interpreted as n_neighbors
 INITIATORS = [100,150,200,500,600,2000,4000,6000,8000,10000]
-# -------------------------------------------------------
 
 FEATURES = [
     'X','Y','Z','EDA','HR','TEMP',
@@ -40,7 +29,6 @@ def load_data():
     return train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
 
 def predict_in_batches(model, X_test, batch_size=10000):
-    """Predict in batches to avoid memory issues"""
     predictions = []
     for i in range(0, len(X_test), batch_size):
         batch = X_test.iloc[i:i+batch_size] if isinstance(X_test, pd.DataFrame) else X_test[i:i+batch_size]
@@ -60,10 +48,8 @@ def main():
     for n in INITIATORS:
         print(f"[KNN] n_neighbors = {n}")
         
-        # For very large n_neighbors, use a smaller test sample to avoid memory issues
         test_sample_size = None
         if n > 2000:
-            # Use 10% of test set for very large n_neighbors
             test_sample_size = max(1000, len(X_test) // 10)
             print(f"  Using test sample size: {test_sample_size} (to avoid memory issues)")
             X_test_sample = X_test.sample(n=test_sample_size, random_state=42)
@@ -76,7 +62,6 @@ def main():
             model = KNeighborsClassifier(n_neighbors=n, n_jobs=-1)
             model.fit(X_train, y_train)
 
-            # Predict in batches for large datasets
             if len(X_test_sample) > 10000:
                 preds = predict_in_batches(model, X_test_sample, batch_size=5000)
             else:
@@ -90,7 +75,7 @@ def main():
         except MemoryError as e:
             print(f" -> Memory Error: Skipping n_neighbors={n} (requires too much memory)")
             print(f"   Error: {str(e)[:100]}")
-            accuracies.append(None)  # Mark as failed
+            accuracies.append(None)
             successful_n.append(n)
             continue
         except Exception as e:
@@ -102,7 +87,6 @@ def main():
     os.makedirs("epoch", exist_ok=True)
     out_file = "epoch/knn_initiators_accuracy.png"
 
-    # Filter out None values (failed runs)
     valid_n = [n for n, acc in zip(successful_n, accuracies) if acc is not None]
     valid_acc = [acc for acc in accuracies if acc is not None]
     

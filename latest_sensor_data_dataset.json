@@ -1,0 +1,14 @@
+{
+  "bpm": 88.88,
+  "temperature": 32.71,
+  "accel_x": 0.23,
+  "accel_y": 0.47,
+  "accel_z": 0.35,
+  "datetime_year": 2020,
+  "datetime_month": 7,
+  "datetime_day": 24,
+  "datetime_hour": 13,
+  "datetime_dow": 4,
+  "timestamp": "2020-07-24T13:19:43.531249920Z",
+  "last_updated": "2025-11-25T07:05:11.687263"
+}
