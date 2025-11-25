@@ -266,6 +266,11 @@ else:
 rf_model = load_model("Random Forest")
 lr_model = load_model("Logistic Regression")
 
+if rf_model is None:
+    st.error("⚠️ Failed to load Random Forest model. Check that saved_models/random_forest.joblib exists and is compatible with scikit-learn 1.3.2")
+if lr_model is None:
+    st.error("⚠️ Failed to load Logistic Regression model. Check that saved_models/logistic_regression.joblib exists and is compatible with scikit-learn 1.3.2")
+
 col_rf, col_lr = st.columns(2)
 
 with col_rf:
