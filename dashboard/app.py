@@ -475,7 +475,7 @@ if sensor_data:
             st.markdown("<br>", unsafe_allow_html=True)
 else:
     if data_source_key == 'simulated':
-        st.warning("Could not load latest_sensor_data_dataset.json. Make sure dataset_simulator.py is running.")
+        st.warning("Could not generate simulated data. Make sure balanced_data.csv exists in the datasets folder.")
     else:
         st.warning("Could not load latest_sensor_data.json. Make sure raspberry.py is running.")
 
