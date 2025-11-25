@@ -1,14 +1,14 @@
 {
-  "bpm": 88.88,
-  "temperature": 32.71,
-  "accel_x": 0.23,
-  "accel_y": 0.47,
-  "accel_z": 0.35,
+  "bpm": 78.13,
+  "temperature": 28.45,
+  "accel_x": -0.35,
+  "accel_y": 0.04,
+  "accel_z": 0.57,
   "datetime_year": 2020,
-  "datetime_month": 7,
-  "datetime_day": 24,
-  "datetime_hour": 13,
-  "datetime_dow": 4,
-  "timestamp": "2020-07-24T13:19:43.531249920Z",
-  "last_updated": "2025-11-25T07:05:11.687263"
+  "datetime_month": 6,
+  "datetime_day": 23,
+  "datetime_hour": 18,
+  "datetime_dow": 1,
+  "timestamp": "2020-06-23T18:37:04.843749888Z",
+  "last_updated": "2025-11-25T07:27:42.224233"
 }

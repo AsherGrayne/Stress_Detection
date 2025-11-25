@@ -42,25 +42,14 @@ def load_model(model_name):
     try:
         model_path = MODEL_PATHS.get(model_name)
         if not model_path:
-            st.error(f"Model path not configured for {model_name}")
             return None
         
         if not os.path.exists(model_path):
-            current_dir = os.getcwd()
-            st.error(f"Model file not found: {model_path}")
-            st.info(f"Current directory: {current_dir}")
-            if os.path.exists('saved_models'):
-                st.info(f"Files in saved_models: {', '.join(os.listdir('saved_models'))}")
-            else:
-                st.info("saved_models directory does not exist")
             return None
         
         model = joblib.load(model_path)
         return model
     except Exception as e:
-        st.error(f"Error loading {model_name}: {str(e)}")
-        import traceback
-        st.error(f"Traceback: {traceback.format_exc()}")
         return None
 
 @st.cache_data
@@ -278,9 +267,9 @@ rf_model = load_model("Random Forest")
 lr_model = load_model("Logistic Regression")
 
 if rf_model is None:
-    st.error("⚠️ Failed to load Random Forest model. Check that saved_models/random_forest.joblib exists and is compatible with scikit-learn 1.0.2")
+    st.error("⚠️ Failed to load Random Forest model. Check that saved_models/random_forest.joblib exists and is compatible with scikit-learn 1.3.2")
 if lr_model is None:
-    st.error("⚠️ Failed to load Logistic Regression model. Check that saved_models/logistic_regression.joblib exists and is compatible with scikit-learn 1.0.2")
+    st.error("⚠️ Failed to load Logistic Regression model. Check that saved_models/logistic_regression.joblib exists and is compatible with scikit-learn 1.3.2")
 
 col_rf, col_lr = st.columns(2)
 
