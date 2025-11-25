@@ -25,6 +25,10 @@ if 'accel_y_readings' not in st.session_state:
     st.session_state.accel_y_readings = []
 if 'accel_z_readings' not in st.session_state:
     st.session_state.accel_z_readings = []
+if 'simulated_data_index' not in st.session_state:
+    st.session_state.simulated_data_index = 0
+if 'simulated_data_df' not in st.session_state:
+    st.session_state.simulated_data_df = None
 
 MAX_READINGS = 50
 
@@ -92,56 +96,20 @@ def predict_stress(model, features):
         st.error(f"Prediction error: {e}")
         return None, None
 
-if 'simulated_data_index' not in st.session_state:
-    st.session_state.simulated_data_index = 0
-
-def load_sensor_data(data_source='real'):
-    if data_source == 'simulated':
+@st.cache_data
+def load_simulated_dataset():
+    try:
         csv_path = os.path.join("datasets", "balanced_data.csv")
         if os.path.exists(csv_path):
-            try:
-                df = pd.read_csv(csv_path)
-                if len(df) > 0:
-                    current_index = st.session_state.simulated_data_index % len(df)
-                    row = df.iloc[current_index]
-                    
-                    datetime_str = str(row.get('datetime', ''))
-                    dt_info = parse_datetime_for_simulated(datetime_str)
-                    
-                    sensor_data = {
-                        'bpm': float(row['HR']) if pd.notna(row['HR']) else 0.0,
-                        'temperature': float(row['TEMP']) if pd.notna(row['TEMP']) else 0.0,
-                        'accel_x': float(row['X']) / 100.0 if pd.notna(row['X']) else 0.0,
-                        'accel_y': float(row['Y']) / 100.0 if pd.notna(row['Y']) else 0.0,
-                        'accel_z': float(row['Z']) / 100.0 if pd.notna(row['Z']) else 0.0,
-                        'datetime_year': dt_info['year'],
-                        'datetime_month': dt_info['month'],
-                        'datetime_day': dt_info['day'],
-                        'datetime_hour': dt_info['hour'],
-                        'datetime_dow': dt_info['dow'],
-                        'timestamp': dt_info['timestamp'],
-                        'last_updated': datetime.now().isoformat()
-                    }
-                    
-                    st.session_state.simulated_data_index += 1
-                    return sensor_data
-            except Exception as e:
-                st.error(f"Error loading simulated data: {e}")
-                return None
+            df = pd.read_csv(csv_path)
+            return df
         return None
-    else:
-        data_file = 'latest_sensor_data.json'
-        if os.path.exists(data_file):
-            try:
-                with open(data_file, 'r') as f:
-                    return json.load(f)
-            except:
-                return None
+    except Exception as e:
         return None
 
 def parse_datetime_for_simulated(dt_str):
     try:
-        if pd.isna(dt_str) or dt_str == '':
+        if pd.isna(dt_str):
             now = datetime.now()
             return {
                 'year': now.year,
@@ -192,6 +160,51 @@ def parse_datetime_for_simulated(dt_str):
             'dow': now.weekday(),
             'timestamp': now.isoformat() + 'Z'
         }
+
+def generate_simulated_data():
+    if st.session_state.simulated_data_df is None:
+        st.session_state.simulated_data_df = load_simulated_dataset()
+    
+    if st.session_state.simulated_data_df is None or len(st.session_state.simulated_data_df) == 0:
+        return None
+    
+    if st.session_state.simulated_data_index >= len(st.session_state.simulated_data_df):
+        st.session_state.simulated_data_index = 0
+    
+    row = st.session_state.simulated_data_df.iloc[st.session_state.simulated_data_index]
+    dt_info = parse_datetime_for_simulated(row.get('datetime'))
+    
+    sensor_data = {
+        'bpm': float(row['HR']) if pd.notna(row['HR']) else 0.0,
+        'temperature': float(row['TEMP']) if pd.notna(row['TEMP']) else 0.0,
+        'accel_x': float(row['X']) / 100.0 if pd.notna(row['X']) else 0.0,
+        'accel_y': float(row['Y']) / 100.0 if pd.notna(row['Y']) else 0.0,
+        'accel_z': float(row['Z']) / 100.0 if pd.notna(row['Z']) else 0.0,
+        'datetime_year': dt_info['year'],
+        'datetime_month': dt_info['month'],
+        'datetime_day': dt_info['day'],
+        'datetime_hour': dt_info['hour'],
+        'datetime_dow': dt_info['dow'],
+        'timestamp': dt_info['timestamp'],
+        'last_updated': datetime.now().isoformat()
+    }
+    
+    st.session_state.simulated_data_index = (st.session_state.simulated_data_index + 1) % len(st.session_state.simulated_data_df)
+    
+    return sensor_data
+
+def load_sensor_data(data_source='real'):
+    if data_source == 'simulated':
+        return generate_simulated_data()
+    else:
+        data_file = 'latest_sensor_data.json'
+        if os.path.exists(data_file):
+            try:
+                with open(data_file, 'r') as f:
+                    return json.load(f)
+            except:
+                return None
+        return None
 
 def add_sensor_reading(sensor_data, reading_list, value_key, timestamp_key='last_updated'):
     if sensor_data and value_key in sensor_data and timestamp_key in sensor_data:
