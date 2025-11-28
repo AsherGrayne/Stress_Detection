@@ -7,8 +7,6 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import plotly.graph_objects as go
-from auth import check_authentication, logout
-from database import save_stress_record, get_user_stress_records, get_daily_stress_count, get_stress_statistics
 
 st.set_page_config(
     page_title="Stress Detection Dashboard",
@@ -16,10 +14,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
-# Check authentication - must be first
-if not check_authentication():
-    st.stop()
 
 if 'hr_readings' not in st.session_state:
     st.session_state.hr_readings = []
@@ -229,18 +223,7 @@ def add_sensor_reading(sensor_data, reading_list, value_key, timestamp_key='last
             if len(reading_list) > MAX_READINGS:
                 reading_list[:] = reading_list[-MAX_READINGS:]
 
-# Header with user info and logout
-col_title, col_user, col_logout = st.columns([2, 1, 1])
-with col_title:
-    st.title("Stress Detection Dashboard")
-with col_user:
-    if st.session_state.user:
-        st.markdown(f"**User:** {st.session_state.user['username']}")
-with col_logout:
-    if st.button("Logout", use_container_width=True):
-        logout()
-
-st.markdown("---")
+st.title("Stress Detection Dashboard")
 
 col_main_toggle, col_switch = st.columns([3, 1])
 
@@ -507,66 +490,16 @@ else:
 
 st.markdown("---")
 
-# Daily Stress Statistics Section
-st.header("Daily Stress Statistics")
-
-user_id = st.session_state.user['id']
-stats = get_stress_statistics(user_id)
-
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.metric("Total Records", stats['total_records'])
-with col2:
-    st.metric("Total Stressed", stats['total_stressed'], 
-              f"{stats['stress_percentage']:.1f}%")
-with col3:
-    st.metric("Today's Records", stats['today_total'])
-with col4:
-    st.metric("Today's Stressed", stats['today_stressed'],
-              f"{stats['today_stress_percentage']:.1f}%")
-
-# Daily stress count chart
-daily_data = get_daily_stress_count(user_id)
-if daily_data:
-    df_daily = pd.DataFrame(daily_data)
-    df_daily['day'] = pd.to_datetime(df_daily['day'])
-    df_daily = df_daily.sort_values('day')
-    
-    fig_daily = go.Figure()
-    fig_daily.add_trace(go.Bar(
-        x=df_daily['day'],
-        y=df_daily['stressed_count'],
-        name='Stressed Count',
-        marker_color='#ff4757'
-    ))
-    fig_daily.add_trace(go.Bar(
-        x=df_daily['day'],
-        y=df_daily.get('normal_count', 0),
-        name='Normal Count',
-        marker_color='#2ed573'
-    ))
-    fig_daily.update_layout(
-        title="Daily Stress Count (Last 30 Days)",
-        xaxis_title='Date',
-        yaxis_title='Count',
-        height=400,
-        barmode='stack',
-        showlegend=True
-    )
-    st.plotly_chart(fig_daily, use_container_width=True)
-else:
-    st.info("No data available yet. Start reading sensor data to see statistics.")
-
-st.markdown("---")
-
 st.header("Stress Log")
+
+if 'stress_log' not in st.session_state:
+    st.session_state.stress_log = []
 
 if not data_active:
     sensor_data_for_stress_log = None
 else:
     sensor_data_for_stress_log = load_sensor_data(data_source_key)
 
-# Save predictions to database
 if sensor_data_for_stress_log and rf_model and lr_model:
     features = prepare_features(sensor_data_for_stress_log)
     rf_prediction, rf_probability = predict_stress(rf_model, features)
@@ -576,47 +509,42 @@ if sensor_data_for_stress_log and rf_model and lr_model:
         rf_prediction_int = int(rf_prediction)
         lr_prediction_int = int(lr_prediction)
         
-        current_timestamp = sensor_data_for_stress_log.get('last_updated', datetime.now().isoformat())
-        
-        rf_status_label = "Normal" if rf_prediction_int == 0 else ("Mildly Stressed" if rf_prediction_int == 1 else "Highly Stressed")
-        lr_status_label = "Normal" if lr_prediction_int == 0 else ("Mildly Stressed" if lr_prediction_int == 1 else "Highly Stressed")
-        
-        # Save to database (save all predictions, not just stressed ones)
-        save_stress_record(
-            user_id=user_id,
-            timestamp=current_timestamp,
-            rf_prediction=rf_prediction_int,
-            rf_status=rf_status_label,
-            rf_confidence=rf_probability * 100 if rf_probability is not None else 0.0,
-            lr_prediction=lr_prediction_int,
-            lr_status=lr_status_label,
-            lr_confidence=lr_probability * 100 if lr_probability is not None else 0.0,
-            hr_value=sensor_data_for_stress_log.get('bpm'),
-            temperature_value=sensor_data_for_stress_log.get('temperature'),
-            accel_x=sensor_data_for_stress_log.get('accel_x'),
-            accel_y=sensor_data_for_stress_log.get('accel_y'),
-            accel_z=sensor_data_for_stress_log.get('accel_z')
-        )
+        if rf_prediction_int > 0 or lr_prediction_int > 0:
+            current_timestamp = sensor_data_for_stress_log.get('last_updated', datetime.now().isoformat())
+            
+            rf_status_label = "Normal" if rf_prediction_int == 0 else ("Mildly Stressed" if rf_prediction_int == 1 else "Highly Stressed")
+            lr_status_label = "Normal" if lr_prediction_int == 0 else ("Mildly Stressed" if lr_prediction_int == 1 else "Highly Stressed")
+            
+            log_entry = {
+                'timestamp': current_timestamp,
+                'rf_prediction': rf_prediction_int,
+                'rf_status': rf_status_label,
+                'rf_confidence': rf_probability * 100 if rf_probability is not None else 0.0,
+                'lr_prediction': lr_prediction_int,
+                'lr_status': lr_status_label,
+                'lr_confidence': lr_probability * 100 if lr_probability is not None else 0.0
+            }
+            
+            if len(st.session_state.stress_log) == 0 or st.session_state.stress_log[-1]['timestamp'] != log_entry['timestamp']:
+                st.session_state.stress_log.append(log_entry)
+                
+                if len(st.session_state.stress_log) > MAX_READINGS:
+                    st.session_state.stress_log[:] = st.session_state.stress_log[-MAX_READINGS:]
 
-# Load and display stress records from database
-stress_records = get_user_stress_records(user_id, limit=MAX_READINGS)
-
-if stress_records:
+if st.session_state.stress_log:
     log_display = []
-    for record in stress_records:
+    for entry in st.session_state.stress_log:
         log_display.append({
-            'Timestamp': record['timestamp'],
-            'RF Prediction': record['rf_prediction'],
-            'RF Status': record['rf_status'],
-            'RF Confidence': f"{record['rf_confidence']:.1f}%" if record['rf_confidence'] else 'N/A',
-            'LR Prediction': record['lr_prediction'],
-            'LR Status': record['lr_status'],
-            'LR Confidence': f"{record['lr_confidence']:.1f}%" if record['lr_confidence'] else 'N/A'
+            'Timestamp': entry['timestamp'],
+            'RF Prediction': entry.get('rf_prediction', 'N/A'),
+            'RF Status': entry['rf_status'],
+            'LR Prediction': entry.get('lr_prediction', 'N/A'),
+            'LR Status': entry['lr_status']
         })
     
     st.dataframe(log_display, use_container_width=True, hide_index=True)
 else:
-    st.info("No stress records yet. The log will record entries as predictions are made.")
+    st.info("No stress detected yet. The log will record entries when stress is detected.")
 
 time.sleep(3)
 st.rerun()

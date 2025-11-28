@@ -1,10 +1,6 @@
 # Data files
 latest_sensor_data.json
 
-# Database
-*.db
-stress_detection.db
-
 # Python
 __pycache__/
 *.py[cod]
