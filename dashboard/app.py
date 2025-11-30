@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import plotly.graph_objects as go
+import requests
 
 st.set_page_config(
     page_title="Stress Detection Dashboard",
@@ -34,7 +35,11 @@ MAX_READINGS = 50
 
 MODEL_PATHS = {
     "Random Forest": "saved_models/random_forest.joblib",
-    "Logistic Regression": "saved_models/logistic_regression.joblib"
+    "Logistic Regression": "saved_models/logistic_regression.joblib",
+    "XGBoost": "saved_models/xgboost.joblib",
+    "LightGBM": "saved_models/lightgbm.joblib",
+    "AdaBoost": "saved_models/adaboost.joblib",
+    "KNN": "saved_models/knn.joblib"
 }
 
 @st.cache_resource
@@ -197,10 +202,79 @@ def generate_simulated_data():
     
     return sensor_data
 
-def load_sensor_data(data_source='real'):
+def fetch_from_thingspeak():
+    CHANNEL_ID = "3160510"
+    READ_API_KEY = "Z7ZCVHQMMHBUUD2L"
+    FETCH_URL = f"https://api.thingspeak.com/channels/{CHANNEL_ID}/feeds/last.json?api_key={READ_API_KEY}"
+    
+    try:
+        response = requests.get(FETCH_URL, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        bpm = data.get("field1")
+        temperature = data.get("field2")
+        accel_x = data.get("field3")
+        accel_y = data.get("field4")
+        accel_z = data.get("field5")
+        timestamp = data.get("created_at")
+
+        datetime_year = None
+        datetime_month = None
+        datetime_day = None
+        datetime_hour = None
+        datetime_dow = None
+        
+        if timestamp:
+            try:
+                dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                datetime_year = dt.year
+                datetime_month = dt.month
+                datetime_day = dt.day
+                datetime_hour = dt.hour
+                datetime_dow = dt.weekday()
+            except Exception as e:
+                pass
+
+        if all([bpm, temperature, accel_x, accel_y, accel_z]):
+            sensor_data = {
+                'bpm': float(bpm) if bpm else None,
+                'temperature': float(temperature) if temperature else None,
+                'accel_x': float(accel_x) if accel_x else None,
+                'accel_y': float(accel_y) if accel_y else None,
+                'accel_z': float(accel_z) if accel_z else None,
+                'datetime_year': datetime_year,
+                'datetime_month': datetime_month,
+                'datetime_day': datetime_day,
+                'datetime_hour': datetime_hour,
+                'datetime_dow': datetime_dow,
+                'timestamp': timestamp,
+                'last_updated': datetime.now().isoformat()
+            }
+            
+            data_file = 'latest_sensor_data.json'
+            try:
+                with open(data_file, 'w') as f:
+                    json.dump(sensor_data, f, indent=2)
+            except Exception as e:
+                pass
+            
+            return sensor_data
+        else:
+            return None
+
+    except Exception as e:
+        return None
+
+def load_sensor_data(data_source='real', reading_active=False):
     if data_source == 'simulated':
         return generate_simulated_data()
     else:
+        if reading_active:
+            sensor_data = fetch_from_thingspeak()
+            if sensor_data:
+                return sensor_data
+        
         data_file = 'latest_sensor_data.json'
         if os.path.exists(data_file):
             try:
@@ -261,10 +335,15 @@ st.header("Stress Detection")
 if not data_active:
     sensor_data_for_prediction = None
 else:
-    sensor_data_for_prediction = load_sensor_data(data_source_key)
+    sensor_data_for_prediction = load_sensor_data(data_source_key, reading_active=data_active)
 
 rf_model = load_model("Random Forest")
 lr_model = load_model("Logistic Regression")
+
+xgb_model = load_model("XGBoost")
+lgb_model = load_model("LightGBM")
+ada_model = load_model("AdaBoost")
+knn_model = load_model("KNN")
 
 if rf_model is None:
     st.error("⚠️ Failed to load Random Forest model. Check that saved_models/random_forest.joblib exists and is compatible with scikit-learn 1.3.2")
@@ -406,7 +485,7 @@ st.header("Sensor readings")
 if not data_active:
     sensor_data = None
 else:
-    sensor_data = load_sensor_data(data_source_key)
+    sensor_data = load_sensor_data(data_source_key, reading_active=data_active)
 
 if sensor_data:
     add_sensor_reading(sensor_data, st.session_state.hr_readings, 'bpm')
@@ -486,7 +565,7 @@ else:
     if data_source_key == 'simulated':
         st.warning("Could not generate simulated data. Make sure balanced_data.csv exists in the datasets folder.")
     else:
-        st.warning("Could not load latest_sensor_data.json. Make sure raspberry.py is running.")
+        st.warning("Could not fetch data from ThingSpeak. Check your internet connection and ThingSpeak API credentials.")
 
 st.markdown("---")
 
@@ -498,7 +577,7 @@ if 'stress_log' not in st.session_state:
 if not data_active:
     sensor_data_for_stress_log = None
 else:
-    sensor_data_for_stress_log = load_sensor_data(data_source_key)
+    sensor_data_for_stress_log = load_sensor_data(data_source_key, reading_active=data_active)
 
 if sensor_data_for_stress_log and rf_model and lr_model:
     features = prepare_features(sensor_data_for_stress_log)

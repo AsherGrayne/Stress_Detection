@@ -132,10 +132,16 @@ The dashboard will automatically open in your browser at `http://localhost:8501`
 
 ## Machine Learning Models
 
-The system uses two trained models:
+The system uses multiple trained models:
 
-1. **Random Forest**: Ensemble learning model for stress classification
+1. **Random Forest**: Tree-based model for stress classification
 2. **Logistic Regression**: Linear model for stress probability estimation
+3. **XGBoost**: Gradient boosting model
+4. **LightGBM**: Light gradient boosting model
+5. **AdaBoost**: Adaptive boosting model
+6. **KNN**: K-Nearest Neighbors model
+
+The best performing model is automatically selected and used for predictions.
 
 ### Model Features
 
