@@ -1,11 +1,5 @@
 # Data files
 latest_sensor_data.json
-collected_data.json
-retrain_config.json
-
-# Large CSV files
-*.csv
-!datasets/*.csv
 
 # Python
 __pycache__/
@@ -34,10 +28,4 @@ Thumbs.db
 
 # Streamlit
 .streamlit/
-
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints/
-
-# Model metrics
-model_metrics/
 
