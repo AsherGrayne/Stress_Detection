@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import plotly.graph_objects as go
+import requests
 
 st.set_page_config(
     page_title="Stress Detection Dashboard",
@@ -197,18 +198,70 @@ def generate_simulated_data():
     
     return sensor_data
 
+def fetch_from_thingspeak():
+    """Fetch latest sensor data directly from ThingSpeak API"""
+    CHANNEL_ID = "3160510"
+    READ_API_KEY = "Z7ZCVHQMMHBUUD2L"
+    FETCH_URL = f"https://api.thingspeak.com/channels/{CHANNEL_ID}/feeds/last.json?api_key={READ_API_KEY}"
+    
+    try:
+        response = requests.get(FETCH_URL, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        bpm = data.get("field1")
+        temperature = data.get("field2")
+        accel_x = data.get("field3")
+        accel_y = data.get("field4")
+        accel_z = data.get("field5")
+        timestamp = data.get("created_at")
+
+        datetime_year = None
+        datetime_month = None
+        datetime_day = None
+        datetime_hour = None
+        datetime_dow = None
+        
+        if timestamp:
+            try:
+                dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                datetime_year = dt.year
+                datetime_month = dt.month
+                datetime_day = dt.day
+                datetime_hour = dt.hour
+                datetime_dow = dt.weekday()
+            except Exception as e:
+                st.warning(f"⚠️ Error parsing timestamp: {e}")
+
+        if all([bpm, temperature, accel_x, accel_y, accel_z]):
+            sensor_data = {
+                'bpm': float(bpm) if bpm else None,
+                'temperature': float(temperature) if temperature else None,
+                'accel_x': float(accel_x) if accel_x else None,
+                'accel_y': float(accel_y) if accel_y else None,
+                'accel_z': float(accel_z) if accel_z else None,
+                'datetime_year': datetime_year,
+                'datetime_month': datetime_month,
+                'datetime_day': datetime_day,
+                'datetime_hour': datetime_hour,
+                'datetime_dow': datetime_dow,
+                'timestamp': timestamp,
+                'last_updated': datetime.now().isoformat()
+            }
+            return sensor_data
+        else:
+            return None
+
+    except Exception as e:
+        st.error(f"❌ Error fetching data from ThingSpeak: {e}")
+        return None
+
 def load_sensor_data(data_source='real'):
     if data_source == 'simulated':
         return generate_simulated_data()
     else:
-        data_file = 'latest_sensor_data.json'
-        if os.path.exists(data_file):
-            try:
-                with open(data_file, 'r') as f:
-                    return json.load(f)
-            except:
-                return None
-        return None
+        # Fetch directly from ThingSpeak API
+        return fetch_from_thingspeak()
 
 def add_sensor_reading(sensor_data, reading_list, value_key, timestamp_key='last_updated'):
     if sensor_data and value_key in sensor_data and timestamp_key in sensor_data:
@@ -267,9 +320,9 @@ rf_model = load_model("Random Forest")
 lr_model = load_model("Logistic Regression")
 
 if rf_model is None:
-    st.error("⚠️ Failed to load Random Forest model. Check that saved_models/random_forest.joblib exists and is compatible with scikit-learn 1.3.2")
+    st.error("Failed to load Random Forest model. Check that saved_models/random_forest.joblib exists and is compatible with scikit-learn 1.3.2")
 if lr_model is None:
-    st.error("⚠️ Failed to load Logistic Regression model. Check that saved_models/logistic_regression.joblib exists and is compatible with scikit-learn 1.3.2")
+    st.error("Failed to load Logistic Regression model. Check that saved_models/logistic_regression.joblib exists and is compatible with scikit-learn 1.3.2")
 
 col_rf, col_lr = st.columns(2)
 
@@ -482,11 +535,11 @@ if sensor_data:
                 st.plotly_chart(fig, use_container_width=True)
             
             st.markdown("<br>", unsafe_allow_html=True)
-else:
-    if data_source_key == 'simulated':
-        st.warning("Could not generate simulated data. Make sure balanced_data.csv exists in the datasets folder.")
     else:
-        st.warning("Could not load latest_sensor_data.json. Make sure raspberry.py is running.")
+        if data_source_key == 'simulated':
+            st.warning("Could not generate simulated data. Make sure balanced_data.csv exists in the datasets folder.")
+        else:
+            st.warning("Could not fetch data from ThingSpeak API. Check your internet connection and ThingSpeak API credentials.")
 
 st.markdown("---")
 
