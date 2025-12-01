@@ -537,9 +537,9 @@ if sensor_data:
             st.markdown("<br>", unsafe_allow_html=True)
     else:
         if data_source_key == 'simulated':
-            st.warning("Could not generate simulated data. Make sure balanced_data.csv exists in the datasets folder.")
+            st.warning("Simulated Data")
         else:
-            st.warning("Could not fetch data from ThingSpeak API. Check your internet connection and ThingSpeak API credentials.")
+            st.warning("Data from ThingspeakAPI.")
 
 st.markdown("---")
 
