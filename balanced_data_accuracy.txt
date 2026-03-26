@@ -1,0 +1,4 @@
+balanced_data.csv vs Job/se_widedeep_model.keras (+ Job/scaler.pkl, preprocessing.json)
+Rows evaluated: 100000
+Correct: 98205
+Accuracy: 0.982050

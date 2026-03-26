@@ -1,0 +1,23 @@
+# ML inference (Keras Wide & Deep + scaler). Build from repo root: Stress_detection/
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY inference_service/requirements.txt /app/inference_service/requirements.txt
+RUN pip install --no-cache-dir -r /app/inference_service/requirements.txt
+
+COPY inference_service/ /app/inference_service/
+COPY Job/ /app/Job/
+
+EXPOSE 8081
+
+ENV PYTHONUNBUFFERED=1
+
+HEALTHCHECK --interval=15s --timeout=10s --start-period=120s --retries=8 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=5)"
+
+CMD ["python", "-m", "uvicorn", "inference_service.main:app", "--host", "0.0.0.0", "--port", "8081"]

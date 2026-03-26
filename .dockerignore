@@ -1,0 +1,25 @@
+.git
+.gitignore
+**/.DS_Store
+**/Thumbs.db
+
+# Java / Maven
+**/target/
+**/.mvn/wrapper/maven-wrapper.jar
+
+# Flutter
+flutter_app/build/
+flutter_app/.dart_tool/
+flutter_app/.flutter-plugins-dependencies
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/.venv/
+**/venv/
+
+# Local secrets (use env in Compose)
+spring-backend/application-local.yml
+
+# Large / unused for containers
+random_forest_model.pkl

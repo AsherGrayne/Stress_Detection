@@ -1,0 +1,34 @@
+# Environments
+.env
+
+# MacOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+vnev/
+venv/
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+
+# Spring Boot Local
+spring-backend/application-local.example.yml
+spring-backend/application-local.yml
+spring-backend/target/
+
+# Data
+balanced_data.csv
+*.csv
+
+# ML Models (Too large for GitHub)
+*.pkl
+random_forest_model.pkl
+
+# Logs
+spring-backend/logs/

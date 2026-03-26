@@ -1,0 +1,33 @@
+# Stress IoT stack: Python inference (ML) + Spring Boot API + MongoDB (Atlas via URI).
+#
+# Usage:
+#   cp .env.example .env   # edit MONGODB_URI if you want high-stress logs
+#   docker compose up --build
+#
+# API: http://localhost:8090   Inference: http://localhost:8081
+
+services:
+  inference:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.inference
+    image: stress-detection-inference:latest
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.spring
+    image: stress-detection-backend:latest
+    ports:
+      - "8090:8090"
+    environment:
+      STRESS_INFERENCE_BASE_URL: http://inference:8081
+      STRESS_CSV_PATH: /data/balanced_data.csv
+      MONGODB_URI: ${MONGODB_URI:-}
+    depends_on:
+      inference:
+        condition: service_healthy
+    restart: unless-stopped
