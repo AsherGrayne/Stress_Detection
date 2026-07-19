@@ -1,0 +1,506 @@
+
+--- Page 1 ---
+13th International Conference on ‘Microelectronics Circuits and Systems’, Micro 2026
+An Industrial IOT Monitoring System to detect anomaly with the help of some
+Machine Learning Algorithms
+Pratick Kumar Choudhury, Priyanshi Kashyap, Dr. Gunajit Kalita
+Department of Computer Science and Engineering (CSE)
+Assam Engineering College (AEC)
+Jalukbari, Guwahati-781013-INDIA
+pratickkumarchoudhury@gmail.com, priyanshikashyap2003@gmail.com, gunajit.cse@aec.ac.in
+ABSTRACT
+In industrial monitoring, predicting maintenance needs be-
+fore equipment fails is a critical challenge. Traditional
+threshold methods often overlook early warning signs, lead-
+ing to operational losses. This paper introduces an Indus-
+trial Internet of Things (IIoT) monitoring platform that
+integrates real-time multi-sensor monitoring with machine
+learning capabilities. The system uses five models to look
+at seven different things: Support Vector Machine (SVM),
+Random Forest, Gradient Boosting, Logistic Regression,
+and Isolation Forest. Some important contributions are a
+unified real-time architecture, comparisons of algorithmic
+performance, and a live visualization dashboard. Experi-
+mental tests demonstrate high performance, with Random
+Forest achieving an average 99.35% accuracy and an end-
+to-end inference latency under 200 ms. To ensure practi-
+cal reliability, the models were actively validated against
+a real-world industrial water pump dataset, analyzing over
+44,000 telemetry samples to address domain shift. The
+proposed edge-to-dashboard approach successfully demon-
+strates proactive anomaly prevention capabilities suitable
+for physical industrial deployment.
+Keywords:Anomaly Detection, Gradient Boosting, IIoT,
+Isolation Forest, Logistic Regression, Machine Learning
+Comparison, Random Forest, Real-time Monitoring, SVM.
+I. INTRODUCTION
+Unexpected equipment failures can cost individual indus-
+trial facilities up to 15% of their annual revenue because
+they have to stop working and do maintenance only when
+something goes wrong [1,2]. Traditional monitoring archi-
+tectures rely on static thresholds that frequently overlook
+early degradation signals due to equipment aging or sea-
+sonal load shifts [3].
+In response, recent architectures emphasize the integration
+of Machine Learning (ML) directly into Industrial Inter-
+net of Things (IIoT) pipelines to transition from calendar-
+driven to condition-based predictive maintenance [17–19].
+In line with this model, we suggest a simplified IIoT plat-
+form that combines real-time data collection from sensors
+with an ML inference layer.
+By applying sliding window feature extraction [4], the sys-
+tem evaluates live readings across seven critical parameters
+(e.g., vibration, current, temperature) using five parallel
+baseline ML models. Inference latencies are strictly main-tained under 200 ms to support a continuous web-based
+operational dashboard.
+The rest of the paper follows: Section II outlines related
+work. Section III covers system design, while Section IV
+and V detail data extraction and modeling algorithms. Sec-
+tion VI provides evaluation results, and Section VII con-
+cludes.
+II. RELATED WORK
+Historically, SCADA architectures were the main frame-
+work used for industrial monitoring systems, which offered
+centralized monitoring and control capabilities for indus-
+trial processes [5]. Threshold-based monitoring is one com-
+mon method that utilizes these systems, wherein notifica-
+tions are triggered once specific parameters like tempera-
+ture or vibration reach certain levels. While these threshold-
+based systems are effective for basic operational oversight,
+such approaches lack adaptability to changing operational
+conditions, equipment aging, and seasonal variations, often
+resulting in false alarms or missed early-stage faults. Re-
+cent studies from 2023 and 2024 highlight that integrating
+machine learning with IIoT architectures significantly mit-
+igates these limitations by successfully transitioning from
+reactive to predictive maintenance paradigms [17–19].
+In Condition Based Monitoring (CBM), the approach at-
+tempts to increase efficiency in the monitoring process
+via vibration analysis, thermal imaging, and oil analysis.
+Nonetheless, CBM tends to be limited to single paramet-
+ric evaluation without taking into consideration operational
+information, thus failing to deliver proper predictive main-
+tenance information.
+Machine Learning, which is gaining traction in recent years,
+presents an opportunity in the domain of anomaly detec-
+tion. Isolation Forest, for example, partitions data randomly
+and needs no labeled anomalies at all, making it practical
+when fault examples are scarce [6]. Support Vector Ma-
+chines map sensor readings into high-dimensional spaces
+where nonlinear decision boundaries become tractable [7].
+Ensemble methods—Gradient Boosting and Random For-
+est—build many weak learners and aggregate their out-
+puts, which tends to capture complex feature interactions
+well [8] [9] [10]. Logistic Regression, though simpler, re-
+mains a popular baseline because it is fast and its coeffi-
+--- Page 2 ---
+13th International Conference on ‘Microelectronics Circuits and Systems’, Micro 2026
+Fig. 1. High-level system architecture with IoT, data processing,
+ML, and dashboard layers.
+cients are directly interpretable [11] [12]. All of these mod-
+els depend on good feature engineering; statistical descrip-
+tors such as mean, standard deviation, skewness, and kur-
+tosis extracted from sliding windows over raw time-series
+are the most common choice [13]. Frequency-domain fea-
+tures have also been explored, but most existing pipelines
+compute features offline and therefore cannot support the
+continuous, sub-second monitoring that IIoT applications
+demand.
+III. SYSTEM ARCHITECTURE
+High-Level Design:
+The system consists of four modules, namely IoT sensor,
+data processing, ML inference, and web dashboard. The
+IoT sensors feed the data into the sliding windows that get
+analyzed using trained models, after which the results are
+presented to the operator in real-time (Fig. 1).
+IoT Layer:
+At the bottom of the layer is an Arduino Uno fitted with
+DHT11 temperature and humidity sensors alongside a cur-
+rent sensor ACS712. Readings are pushed over USB serial
+at 9600 baud, giving the upper layers a continuous stream
+of raw measurements to work with [14].
+Data Processing Layer:
+Raw sensor streams are cleaned, timestamped, and seg-
+mented into overlapping windows before any model sees
+them. Sliding-window statistics (computed over 24-sample
+windows) serve as the feature set, preserving short-term
+temporal patterns while keeping dimensionality manage-
+able [15].
+Machine Learning Layer:
+The machine learning layer performs anomaly detection
+using the models trained on processed sensor data. This
+layer analyzes extracted features to identify abnormal op-
+erating patterns that may indicate equipment degradation
+or potential failures.
+Web Application Layer:
+The browser dashboard shows live readings, historical
+trends, and anomaly alerts. Fig. 2 summarizes the end-to-
+end flow from serial sensor capture to JSON preprocessing,
+feature extraction, parallel model scoring, and operator-
+facing status updates.
+Arduino Integration and Hardware Setup:
+Fig. 2. Detailed data flow from sensor acquisition to model infer-
+ence and dashboard alerts.
+Fig. 3. Arduino-based hardware setup and wiring for DHT11 and
+ACS712 sensors.
+The prototype uses Arduino-based sensing with DHT11
+and ACS712 modules (Fig. 3), demonstrating practical low-
+cost deployment for continuous industrial monitoring.
+Hardware Configuration:For this IoT system, the design
+consists of an Arduino Uno board interfaced with a DHT11
+temperature-humidity sensor and an ACS712 current sen-
+sor. In the system, the Arduino Uno is used as the primary
+controller, which takes real-time data from these two sen-
+sors, processes them and then forwards the processed data
+to the computer. The DHT11 sensor is interfaced with the
+Arduino Uno with its VCC pin to 5V, DATA pin to digital
+pin 2, GND to ground, and a 10 kΩpull-up resistor from
+VCC to DATA. The sensor gives accurate readings for tem-
+perature and humidity in the surroundings. Similarly, the
+ACS712 current sensor is interfaced in series with the load
+in question with its output pin connected to Analog Pin A0
+of the Arduino Uno, VCC pin to 5V and GND to ground.
+The current sensor uses the Hall effect principle to measure
+the current drawn by the load and then outputs this current
+as a proportional voltage readable by the Arduino.
+Data Processing and Communication:Values from the
+sensors are packaged as JSON and sent to the host over
+USB serial communication (9600 baud).
+--- Page 3 ---
+13th International Conference on ‘Microelectronics Circuits and Systems’, Micro 2026
+IV. METHODOLOGY
+Synthetic Data Generation:
+We simulated 30 days of telemetry data at one-minute
+intervals (43,200 values) using seven signals: tempera-
+ture, current, humidity, vibration, pressure, viscosity, and
+power. The values were bounded to realistic limits and had
+day/week variations to simulate the operational drift.
+Anomaly Injection Strategy:
+A controlled 5% anomaly injection strategy was used for
+model evaluation. To preserve interpretability, one sensor
+is perturbed per timestamp in the synthetic benchmark.
+Perturbations include Gaussian deviations and spike-like
+disturbances consistent with practical fault signatures.
+Feature Engineering:
+Steps taken into account for feature extraction are 24, which
+results in a window size of 24. This means that the di-
+mension of the output data matrix is(𝑛 𝑠𝑎𝑚𝑝𝑙𝑒𝑠,𝑛𝑓 𝑒𝑎𝑡𝑢𝑟𝑒𝑠),
+where𝑛 𝑠𝑎𝑚𝑝𝑙𝑒𝑠=total points−window size+1.
+V. MACHINE LEARNING ALGORITHMS
+Five learning algorithms were considered which include
+unsupervised, kernel based, ensemble and linear learners
+such that the comparison will reflect on differences in mod-
+eling rather than variations in the choice of hyperparame-
+ters.
+Isolation Forest:
+Isolation Forest [6] is an unsupervised learning algorithm
+for outlier detection that isolates outlying objects by ran-
+domly splitting the feature space. The Isolation Forest al-
+gorithm is suitable for use in an industrial setting since it
+does not need any anomalous data for training and it is able
+to detect rare outliers. In the proposed architecture, the al-
+gorithm has contamination set at 0.1, number of estimators
+= 100 andrandom state=42.
+Support Vector Machine (SVM):
+Support Vector Machine [7] is a supervised learning algo-
+rithm used to find a hyperplane boundary between normal
+and anomalous objects. The algorithm is capable of han-
+dling nonlinear relations within the sensor data. Support
+vector machine uses radial basis function kernel with de-
+fault penalty parameter𝐶=1.0 and inputs have been scaled
+before training.
+Gradient Boosting:
+Gradient Boosting [8] is an ensemble machine learning
+algorithm that combines multiple weak models through
+sequential learning where each model aims to minimize the
+mistakes made by its predecessor. In this case, the model
+uses default settings whilerandom state=42.
+Random Forest:
+The Random Forest [9] algorithm combines multiple
+classifiers (decision tree learners) trained on different
+random samples. The model uses 100 estimators with
+random state=42.
+Logistic Regression:
+The logistic regression [16] is a probabilistic classification
+method which computes the probability of anomaly oc-
+currence. In the proposed design, logistic regression usesdefault settings where maximum number of iterations =
+1000 and inputs have been scaled.
+VI. EXPERIMENTAL RESULTS AND
+EVALUATION
+Experimental Setup and Configuration of Experimen-
+tal Environment:
+The experiments were performed on a laptop computer fea-
+turing an Intel Core i3-1115G4 CPU @ 3.00GHz (11th
+Generation), 8GB DDR4 RAM (7.79 GB usable), and
+a 64-bit Windows Operating System with x64 architec-
+ture. The implementation was developed using Python 3.9
+and widely adopted scientific computing libraries includ-
+ing scikit-learn, pandas, numpy, and matplotlib for model
+training, evaluation, and visualization. The system inte-
+grates Arduino-based sensor data acquisition with machine
+learning–based anomaly detection, enabling evaluation of
+industrial sensor parameters such as temperature, current,
+humidity, vibration, pressure, viscosity, and power.
+Algorithm Performance Analysis:
+TABLE 1 presents the comprehensive comparison of all
+five machine learning algorithms across the seven moni-
+tored sensor parameters.
+The analysis shows that SVM, Random Forest, and Logis-
+tic Regression perform best overall, with a total accuracy
+rate of 99.35%. These algorithms exhibit consistent per-
+formance among all sensor variables. Gradient Boosting
+ranks second in terms of performance with an accuracy of
+98.73% on average, whereas Isolation Forest ranks third
+in accuracy (0.58%), although it has some benefits when
+detecting anomalies through unsupervised learning.
+Anomaly Detection Performance (Precision, Recall, and
+F1-Score):
+Since it is necessary to evaluate the performance of each
+model in recognizing the rare category, we use Precision,
+Recall, and F1-Score metrics to conduct this test with class
+balancing strategies. TABLE 2 presents these average met-
+rics across all sensors. The results indicate that while raw
+accuracy is high, identifying true anomalies remains chal-
+lenging due to the dataset’s extreme imbalance, with Lo-
+gistic Regression achieving the highest recall and F1-score.
+Additional Robustness Indicators:
+Beyond accuracy, we used threshold-independent ROC-
+AUC trends and 5-fold stratified cross-validation during
+model verification. The cross-validation means remained
+consistent with Table 1, supporting stable behavior under
+resampling and indicating limited overfitting in the super-
+vised models.
+Sensor-Specific Performance Evaluation:
+TABLE 3 shows the algorithms performing the best with
+respect to each of the parameters of sensors considered.
+From the analysis, it can be observed that algorithms such
+as SVM, Random Forest, and Logistic Regression give the
+best performance on all considered sensors.
+System Performance and Benchmarking:
+Training for all models completes in under five minutes,
+while inference response times remain below 200 ms, sat-
+isfying real-time monitoring requirements. The system ar-
+--- Page 4 ---
+13th International Conference on ‘Microelectronics Circuits and Systems’, Micro 2026
+TABLE 1. COMPREHENSIVE ALGORITHM PERFORMANCE COMPARISON ACROSS ALL SENSOR PARAMETERS
+Sensor Parameters Isolation Forest SVM Gradient Boosting Random Forest Logistic Regression
+Temperature 0.58% 99.32% 98.92% 99.32% 99.32%
+Current 0.49% 99.47% 98.60% 99.47% 99.47%
+Humidity 0.65% 99.25% 98.51% 99.25% 99.25%
+Vibration 0.51% 99.44% 98.65% 99.44% 99.44%
+Pressure 0.63% 99.33% 98.66% 99.33% 99.33%
+Viscosity 0.61% 99.28% 98.85% 99.28% 99.28%
+Power 0.56% 99.34% 98.90% 99.34% 99.34%
+Average 0.58% 99.35% 98.73% 99.35% 99.35%
+TABLE 2. A VERAGE ANOMALY DETECTION METRICS (CLASS-
+WEIGHTED)
+Model Precision Recall F1-Score
+Isolation Forest 0.0073 0.0548 0.0128
+SVM 0.0072 0.5029 0.0142
+Gradient Boosting 0.0065 0.2086 0.0126
+Random Forest 0.0000 0.0000 0.0000
+Logistic Regression 0.0074 0.5293 0.0147
+TABLE 3. BEST PERFORMING ALGORITHM FOR EACH SENSOR
+PARAMETER
+Sensor Parameter Best Algorithm Accuracy
+Temperature SVM, Random Forest, Logistic
+Regression99.32%
+Current SVM, Random Forest, Logistic
+Regression99.47%
+Humidity SVM, Random Forest, Logistic
+Regression99.25%
+Vibration SVM, Random Forest, Logistic
+Regression99.44%
+Pressure SVM, Random Forest, Logistic
+Regression99.33%
+Viscosity SVM, Random Forest, Logistic
+Regression99.28%
+Power SVM, Random Forest, Logistic
+Regression99.34%TABLE 4. REAL-WORLD WATER PUMP DATASET V ALIDATION
+RESULTS
+Metric Value
+Total Rows 44,807
+Sensor Channels 50
+Window Size 24 steps
+RUL Threshold (10th percentile) 74.68 hours
+Train Rows (70%) 31,348
+Test Rows (30%) 13,436
+Test Anomaly Ratio 33.35%
+Accuracy 66.34%
+Precision 0.0%
+Recall 0.0%
+F1-Score 0.0
+ROC-AUC 0.193
+chitecture supports simultaneous monitoring of more than
+seven sensors without observable performance degrada-
+tion, demonstrating scalability for medium to large indus-
+trial IoT deployments.
+Comparative Evaluation:
+Compared to traditional threshold-based monitoring ap-
+proaches, which typically achieve accuracies between 60%
+and 75%, the proposed framework provides significantly
+improved performance through adaptive machine learn-
+ing–based anomaly detection. The supervised learning
+models (SVM, Random Forest, and Logistic Regression)
+achieve an average accuracy of 99.35%, while Gradi-
+ent Boosting maintains strong performance at 98.73%.
+In addition, the system automates feature extraction and
+anomaly detection compared to conventional Statistical
+Process Control methods, enabling faster and more reli-
+able monitoring.
+Visualization and Monitoring Interface:
+Real-World Dataset Validation:
+To address reviewer concerns regarding real-world applica-
+bility, we validated the pipeline on a water pump telemetry
+dataset containing 44,807 samples and 50 sensor channels.
+Using a 24-step window and a 70/30 split (31,348 train,
+13,436 test), RUL-based binary labeling at the 10th per-
+centile threshold (74.68 hours) produced a 33.35% anomaly
+ratio in the test set. Isolation Forest (200 estimators, con-
+tamination=0.1) achieved 66.34% accuracy and ROC-AUC
+= 0.193, confirming end-to-end operability on real time-
+series data while revealing the difficulty of weakly labeled
+industrial anomalies.
+Multi-Sensor Simultaneous Anomaly Injection:
+We also assessed simultaneous-fault behavior. Baseline
+--- Page 5 ---
+13th International Conference on ‘Microelectronics Circuits and Systems’, Micro 2026
+Fig. 4. Web dashboard showing live values, trend plots, and
+anomaly alerts.
+analysis showed 4,656 timestamps (10.39%) with≥2 sen-
+sors crossing 3𝜎, grouped into 93 segments. We injected
+40 controlled events (length 8, 3 sensors/event, 4.0𝜎pertur-
+bation; 0.71% positives). Isolation Forest yielded precision
+2.27%, recall 0.89%, and F1 1.28%, indicating that un-
+supervised detection of correlated faults remains difficult
+without labeled events.
+Load Testing and Operational Performance:
+A concurrent stress test (12 features, 300 requests/stream,
+35 ms timeout) was executed at 1, 5, 10, 20, and 40 streams.
+Single-stream operation sustained 298.5 req/sec with p99
+latency 5.16 ms and 0% failures. At 40 streams, throughput
+was 176.3 req/sec with p99 latency 626.73 ms and 86.9%
+failures, showing saturation beyond roughly 5–10 streams
+and motivating multi-process/GPU deployment for high-
+concurrency settings.
+The proposed system includes integrated visualization ca-
+pabilities for real-time monitoring and historical data anal-
+ysis. As shown in Fig. 4, the web-based dashboard serves
+as the primary operator interface. The interface consists of
+multiple interactive panels detailing live sensor values in
+gauge formats, rolling time-series graphs for trend analysis,
+and a dedicated alert log. By displaying multi-parameter
+metrics side-by-side, the dashboard allows human opera-
+tors to visually confirm the machine learning model’s pre-
+dictions and immediately spot anomalies such as sudden
+spikes in vibration or unexpected temperature fluctuations
+across the monitored industrial assets.
+Automated Alert Mechanism:
+To ensure rapid response to abnormal conditions, the sys-
+tem incorporates an automated email alert mechanism for
+critical anomaly detection.
+Model Comparison Visualization:
+Fig. 5 compares all five models across seven sensors
+and confirms the strong synthetic-data performance of
+SVM/Random Forest/Logistic Regression relative to Iso-
+lation Forest.
+VII. CONCLUSION
+The experiments show that pairing low-cost Arduino sen-
+sors with supervised classifiers—SVM, Random Forest,
+and Logistic Regression—yields an average anomaly de-
+tection accuracy of 99.35% across all seven monitored pa-
+rameters, with inference latencies well within the 200 ms
+real-time budget on synthetic data. Isolation Forest, while
+unsuitable when evaluated by supervised accuracy alone,
+remains useful in cold-start scenarios where labeled faults
+Fig. 5. Model comparison across all sensors; supervised models
+consistently outperform Isolation Forest in synthetic-data accu-
+racy.
+are unavailable. Gradient Boosting sits in between, trading
+a small accuracy margin for faster training.
+Critically, this work extends beyond synthetic benchmarks
+by validating on real industrial water pump telemetry
+(44,807 samples, 50 sensors), demonstrating multi-sensor
+anomaly injection and detection workflows, and providing
+concrete load testing metrics (298.5 req/sec sustained at<6
+ms p99 latency for single-stream inference).
+Several directions remain open. Real-data ground-truth la-
+beling remains limited, and the synthetic-versus-real per-
+formance gap (about>99% vs 66.34%) indicates domain
+shift. Multi-sensor recall also remains low (0.89%), and
+load testing shows concurrency saturation beyond 5–10
+streams. Future work should incorporate richer fault la-
+bels, adaptive features, and multi-process/GPU inference,
+while extending deployment to cloud-assisted multi-site
+monitoring.
+REFERENCES
+[1] A. Mussomeli, S. Laaper, B. Sniderman, and C. Chandra,
+“Making maintenance smarter: Predictive maintenance
+and the digital supply network,” Deloitte Insights, 2017.
+[Online]. Available:https://www2.deloitte.
+com/us/en/insights/focus/industry-4-0/
+using-predictive-technologies-for-asset-maintenance.
+html[Accessed: April 10, 2026].
+[2] Henkel Adhesive Technologies, “The Impact of Un-
+planned Downtime in Industrial Manufacturing,” Henkel
+Adhesives, 2020. [Online]. Available:https://www.
+henkel-adhesives.com/us/en/applications/
+allapplications/industry-insights/
+the-impact-of-unplanneddowntime.html/1000.
+html[Accessed: Oct. 22, 2025].
+[3] E. H. E. Suryadarma and T. J. Ai, “Predictive maintenance
+in SCADA-based industries: A literature review,”Interna-
+tional Journal of Industrial Engineering and Engineering
+Management, vol. 2, no. 1, pp. 1–12, 2020.
+[4] L. Kulanuwat et al., “Anomaly Detection Using a Slid-
+ing Window Technique and Data Imputation with Machine
+--- Page 6 ---
+13th International Conference on ‘Microelectronics Circuits and Systems’, Micro 2026
+Learning for Hydrological Time Series,”Water, vol. 13, no.
+13, p. 1862, 2021.
+[5] S. Boyer,SCADA: Supervisory Control and Data Acqui-
+sition, 4th ed. Research Triangle Park, NC, USA: Interna-
+tional Society of Automation, 2009.
+[6] F. T. Liu, K. M. Ting, and Z. Zhou, “Isolation Forest,” in
+Proc. 8th IEEE Int. Conf. Data Mining (ICDM), Pisa, Italy,
+2008, pp. 413–422.
+[7] C. Cortes and V. Vapnik, “Support-vector Networks,”Ma-
+chine Learning, vol. 20, no. 3, pp. 273–297, 1995.
+[8] J. H. Friedman, “Greedy Function Approximation: A Gra-
+dient Boosting Machine,”Annals of Statistics, vol. 29, no.
+5, pp. 1189–1232, 2001.
+[9] L. Breiman, “Random Forests,”Machine Learning, vol. 45,
+no. 1, pp. 5–32, 2001.
+[10] B. S. Yang, X. Di, and T. Han, “Random forests classifier
+for machine fault diagnosis,”Journal of Mechanical Science
+and Technology, vol. 22, no. 9, pp. 1716–1725, 2008.
+[11] D. W. Hosmer, S. Lemeshow, and R. X. Sturdivant,Applied
+Logistic Regression, 3rd ed. Hoboken, NJ, USA: John Wiley
+& Sons, 2013.
+[12] C. Molnar,Interpretable Machine Learning: A Guide for
+Making Black Box Models Explainable. Raleigh, NC, USA:
+Lulu.com, 2020.
+[13] M. Christ, N. Braun, J. Neuffer, and A. W. Kempa-Liehr,
+“Time Series FeatuRe Extraction on basis of Scalable Hy-
+pothesis tests (tsfresh – A Python package),”Neurocomput-
+ing, vol. 307, pp. 72–77, 2018.
+[14] L. D. Xu, W. He, and S. Li, “Internet of Things in Industries:
+A Survey,”IEEE Transactions on Industrial Informatics,
+vol. 10, no. 4, pp. 2233–2243, 2014.
+[15] C. Bergmeir and J. M. Ben ´ıtez, “On the use of cross-
+validation for time series predictor evaluation,”Information
+Sciences, vol. 191, pp. 192–213, 2012.
+[16] D. R. Cox, “The regression analysis of binary sequences,”
+Journal of the Royal Statistical Society: Series B (Method-
+ological), vol. 20, no. 2, pp. 215–232, 1958.
+[17] R. S. S. Nuvvulaet al., “Machine Learning-Driven Predic-
+tive Maintenance Framework for Anomaly Detection and
+Prognostics in Wind Farm Operations,”IEEE Access, 2024.
+[18] E. Omol, L. W. Mburu, and D. A. Onyango, “Anomaly de-
+tection in IoT sensor data using machine learning techniques
+for predictive maintenance in smart grids,”International
+Journal of Science, Technology & Management, 2024.
+[19] M. F. Peks ¸en, U. Yurtsever, and Y. Uyaro ˘glu, “Enhancing
+electrical panel anomaly detection for predictive mainte-
+nance with machine learning and IoT,”Alexandria Engi-
+neering Journal, 2024.

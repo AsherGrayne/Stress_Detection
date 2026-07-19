@@ -17,11 +17,6 @@ env/
 .vscode/
 .idea/
 
-# Spring Boot Local
-spring-backend/application-local.example.yml
-spring-backend/application-local.yml
-spring-backend/target/
-
 # Data
 balanced_data.csv
 *.csv
@@ -31,4 +26,5 @@ balanced_data.csv
 random_forest_model.pkl
 
 # Logs
-spring-backend/logs/
+node_modules/
+node-app/node_modules/

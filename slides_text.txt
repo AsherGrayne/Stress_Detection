@@ -1,0 +1,109 @@
+
+--- Page 1 ---
+An Industrial IoT Monitoring System for Anomaly Detection Using 
+Machine Learning Algorithms
+13th International Conference on Microelectronics Circuits and Systems (Micro 2026)
+
+--- Page 2 ---
+Introduction & Motivation
+•
+•
+⚬
+⚬
+⚬
+
+--- Page 3 ---
+The Proposed Solution
+•
+•
+•
+⚬
+⚬
+⚬
+
+--- Page 4 ---
+Hardware Setup & IoT Layer
+•
+•
+⚬
+Ω
+⚬
+•
+
+--- Page 5 ---
+High -Level System Architecture
+•
+
+--- Page 6 ---
+Hardware and Data Acquisition Setup
+•
+•
+•
+•
+
+--- Page 7 ---
+Methodology & Feature Engineering
+•
+⚬
+⚬
+•
+⚬
+⚬
+⚬
+
+--- Page 8 ---
+Evaluated Machine Learning Algorithms
+•
+•
+•
+•
+⚬
+⚬
+•
+
+--- Page 9 ---
+Experimental Results (Synthetic Benchmark)
+•
+•
+
+--- Page 10 ---
+Real-World Dataset Validation
+•
+•
+•
+•
+
+--- Page 11 ---
+Load Testing & Visualization Dashboard
+•
+•
+•
+
+--- Page 12 ---
+Conclusion & Future Scope
+•
+•
+⚬
+⚬
+⚬
+
+--- Page 13 ---
+References
+•
+•
+•
+•
+•
+•
+•
+
+--- Page 14 ---
+References
+•
+•
+•
+•
+•
+•
+ ş
+ ğ

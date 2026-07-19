@@ -1,0 +1,24 @@
+{
+  "name": "stress-detection-node",
+  "version": "1.0.0",
+  "description": "Lightweight Node.js dashboard and API for the stress detection model.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "keywords": [
+    "stress-detection",
+    "iot",
+    "node"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongodb": "^7.2.0"
+  }
+}

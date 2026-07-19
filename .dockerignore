@@ -3,14 +3,9 @@
 **/.DS_Store
 **/Thumbs.db
 
-# Java / Maven
-**/target/
-**/.mvn/wrapper/maven-wrapper.jar
-
-# Flutter
-flutter_app/build/
-flutter_app/.dart_tool/
-flutter_app/.flutter-plugins-dependencies
+# Node
+node-app/node_modules/
+npm-debug.log*
 
 # Python
 **/__pycache__/
@@ -19,7 +14,7 @@ flutter_app/.flutter-plugins-dependencies
 **/venv/
 
 # Local secrets (use env in Compose)
-spring-backend/application-local.yml
+.env
 
 # Large / unused for containers
 random_forest_model.pkl

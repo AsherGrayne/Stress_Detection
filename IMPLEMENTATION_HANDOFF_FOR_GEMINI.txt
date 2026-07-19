@@ -1,0 +1,873 @@
+STRESS DETECTION PROJECT - IMPLEMENTATION HANDOFF FOR GEMINI
+============================================================
+
+Purpose of this file
+--------------------
+This text file documents exactly what was changed and how the new implementation works.
+It is written so another AI model, such as Gemini, can understand the current project
+without needing the previous chat history.
+
+
+High-level change
+-----------------
+The project originally had:
+
+1. Python FastAPI inference service for the ML model.
+2. Spring Boot Java backend.
+3. Flutter frontend.
+
+The user requested that Flutter and Spring Boot be removed and replaced with a lighter,
+easier-to-run, professional-looking implementation.
+
+The new implementation keeps the existing Python ML inference service and replaces both
+the Spring Boot backend and Flutter frontend with a single Node.js application:
+
+1. Python FastAPI inference remains in:
+   inference_service/main.py
+
+2. New lightweight Node.js app lives in:
+   node-app/
+
+3. Node.js app does all of this:
+   - Serves the browser dashboard.
+   - Exposes REST API endpoints.
+   - Reads simulated telemetry from balanced_data.csv.
+   - Reads real telemetry from Firebase.
+   - Calls the Python inference API at /predict.
+   - Keeps rolling chart data in memory.
+   - Optionally logs mild/high stress events to MongoDB.
+
+4. Removed old implementation folders/files:
+   - flutter_app/
+   - spring-backend/
+   - docker/Dockerfile.spring
+   - FLUTTER_BACKEND.md
+
+
+Current architecture
+--------------------
+The current runtime architecture is:
+
+balanced_data.csv or Firebase
+        |
+        v
+Node.js Express app on port 8090
+        |
+        v
+Python FastAPI inference service on port 8081
+        |
+        v
+Node.js receives stress category
+        |
+        v
+Browser dashboard displays prediction, charts, readings, and optional history
+        |
+        v
+MongoDB Atlas stores mild/high stress events if MONGODB_URI is configured
+
+
+Main technologies now used
+--------------------------
+Python side:
+  - FastAPI
+  - Uvicorn
+  - Keras/TensorFlow
+  - joblib
+  - pandas/numpy
+  - scikit-learn artifacts
+
+Node side:
+  - Node.js
+  - Express
+  - MongoDB official Node driver
+  - dotenv
+  - Native fetch API
+  - Static HTML/CSS/JavaScript dashboard
+  - Canvas charts, no charting library dependency
+
+
+Important ports
+---------------
+Python inference:
+  http://127.0.0.1:8081
+
+Node dashboard/API:
+  http://localhost:8090
+
+
+Important model behavior
+------------------------
+The Python service was kept as the ML inference authority.
+
+File:
+  inference_service/main.py
+
+It loads:
+  Job/preprocessing.json
+  Job/scaler.pkl
+  Job/se_widedeep_model.keras
+
+It exposes:
+  GET /health
+  POST /predict
+
+The Node app sends sensor readings to:
+  POST http://127.0.0.1:8081/predict
+
+Expected request body:
+{
+  "x": number,
+  "y": number,
+  "z": number,
+  "eda": number,
+  "hr": number,
+  "temp": number
+}
+
+Expected response:
+{
+  "stressCategory": 0
+}
+
+Stress classes:
+  0 = No Stress
+  1 = Mild Stress
+  2 = High Stress
+
+
+New Node app structure
+----------------------
+New folder:
+  node-app/
+
+Important files:
+  node-app/package.json
+  node-app/package-lock.json
+  node-app/src/server.js
+  node-app/public/index.html
+  node-app/public/styles.css
+  node-app/public/app.js
+
+
+node-app/package.json
+---------------------
+Purpose:
+  Defines the Node app, scripts, and dependencies.
+
+Important settings:
+  "type": "module"
+
+This means the server uses ES module syntax:
+  import express from 'express';
+
+Scripts:
+  npm start
+    Runs node src/server.js
+
+  npm run dev
+    Runs node --watch src/server.js
+
+Dependencies:
+  express
+    Web server and REST API.
+
+  mongodb
+    Optional MongoDB stress history logging.
+
+  dotenv
+    Loads .env values into process.env.
+
+
+node-app/src/server.js
+----------------------
+This is the main replacement for the old Spring Boot backend and also serves the frontend.
+
+Key responsibilities:
+
+1. Load configuration from environment variables.
+2. Read balanced_data.csv for simulated telemetry.
+3. Maintain current telemetry snapshots in memory.
+4. Maintain rolling time-series chart data.
+5. Poll Firebase for real device telemetry.
+6. Call Python inference service.
+7. Provide REST API endpoints.
+8. Serve static frontend from node-app/public.
+9. Optionally log mild/high stress to MongoDB.
+
+
+Configuration inside server.js
+------------------------------
+The config object uses:
+
+PORT
+  Default: 8090
+  Controls the Node app port.
+
+STRESS_CSV_PATH
+  Default: root balanced_data.csv
+  Used for simulated telemetry.
+
+STRESS_INFERENCE_BASE_URL
+  Default: http://127.0.0.1:8081
+  Python inference service URL.
+
+STRESS_INTERVAL_MS
+  Default: 5000
+  Scheduler interval for simulated and real telemetry.
+
+STRESS_CHART_HISTORY_SIZE
+  Default: 60
+  Number of chart points retained per sensor.
+
+FIREBASE_URL
+  Default:
+  https://stress-detection-c2bec-default-rtdb.asia-southeast1.firebasedatabase.app/data.json
+  Used for real device telemetry.
+
+MONGODB_URI or STRESS_MONGODB_URI
+  Default: empty
+  If provided, enables MongoDB logging.
+
+
+CsvFeed class in server.js
+--------------------------
+Purpose:
+  Replacement for the old Java CSV telemetry feed.
+
+Behavior:
+  - Reads balanced_data.csv synchronously at startup.
+  - Skips the header row.
+  - Converts each row into:
+    {
+      sequenceIndex: number,
+      reading: { x, y, z, eda, hr, temp }
+    }
+  - Uses an internal cursor.
+  - next() returns the next row.
+  - When the end is reached, it loops back to the beginning.
+
+CSV expected columns:
+  X,Y,Z,EDA,HR,TEMP,label
+
+The label column is not used by Node inference. The prediction comes from the Python model.
+
+
+TelemetryState class in server.js
+---------------------------------
+Purpose:
+  Replacement for the old Java in-memory telemetry state.
+
+Behavior:
+  - Stores the latest snapshot for one source.
+  - Keeps rolling chart series for:
+    X, Y, Z, EDA, HR, TEMP
+  - Each chart point has:
+    { t: epochMilliseconds, v: sensorValue }
+  - Limits the number of points to STRESS_CHART_HISTORY_SIZE.
+
+Snapshot shape returned to frontend:
+{
+  "observedAt": "ISO timestamp",
+  "sequenceIndex": number,
+  "reading": {
+    "x": number,
+    "y": number,
+    "z": number,
+    "eda": number,
+    "hr": number,
+    "temp": number
+  },
+  "predictedStressCategory": number,
+  "predictedStressLabel": "No Stress | Mild Stress | High Stress",
+  "series": {
+    "X": [{ "t": number, "v": number }],
+    "Y": [{ "t": number, "v": number }],
+    "Z": [{ "t": number, "v": number }],
+    "EDA": [{ "t": number, "v": number }],
+    "HR": [{ "t": number, "v": number }],
+    "TEMP": [{ "t": number, "v": number }]
+  }
+}
+
+
+StressLogStore class in server.js
+---------------------------------
+Purpose:
+  Replacement for the old Java MongoDB stress log service.
+
+Behavior:
+  - If no MongoDB URI is configured, it logs a warning and disables persistence.
+  - If MongoDB URI is configured, connects using the official MongoDB Node driver.
+  - Uses database:
+    Stress_Detection
+  - Uses collections:
+    stress_log_simulated
+    stress_log_real
+  - Logs only category >= 1:
+    1 = Mild Stress
+    2 = High Stress
+  - Does not log category 0.
+  - History lookup sorts by loggedAt descending.
+  - History limit is clamped between 1 and 250.
+
+Logged document shape:
+{
+  "stressCategory": number,
+  "stressLabel": string,
+  "loggedAt": Date,
+  "reading": {
+    "x": number,
+    "y": number,
+    "z": number,
+    "eda": number,
+    "hr": number,
+    "temp": number
+  }
+}
+
+
+Express middleware in server.js
+-------------------------------
+The server uses:
+  express.json()
+
+It also sets permissive CORS headers:
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET,POST,OPTIONS
+  Access-Control-Allow-Headers: Content-Type
+
+It serves static frontend files from:
+  node-app/public/
+
+It has a single-page fallback:
+  app.get(/.*/, ...)
+
+This fallback uses a regular expression because Express 5 does not accept app.get('*')
+with the same behavior as older Express versions.
+
+
+Node API endpoints
+------------------
+GET /api/health
+  Returns:
+  {
+    "status": "ok",
+    "service": "stress-detection-node",
+    "inferenceBaseUrl": configuredInferenceUrl
+  }
+
+GET /api/telemetry/simulated/latest
+  Returns the latest simulated snapshot.
+  If no snapshot is ready, returns 503.
+
+GET /api/telemetry/real/latest
+  Returns the latest real Firebase snapshot.
+  If no snapshot is ready, returns 503.
+
+GET /api/telemetry/next
+  Manually advances the simulated CSV cursor, calls Python inference, and returns:
+  {
+    "sequenceIndex": number,
+    "reading": object,
+    "predictedStressCategory": number,
+    "predictedStressLabel": string
+  }
+
+GET /api/telemetry/simulated/history
+  Returns MongoDB history for simulated stress events.
+  Returns [] if MongoDB is disabled or unavailable.
+
+GET /api/telemetry/real/history
+  Returns MongoDB history for real device stress events.
+  Returns [] if MongoDB is disabled or unavailable.
+
+History accepts optional:
+  ?limit=20
+
+
+Schedulers in server.js
+-----------------------
+startSchedulers() runs after the Node app starts listening.
+
+It immediately tries:
+  processSimulatedTick()
+  processRealTick()
+
+Then it schedules both at the configured interval:
+  setInterval(..., STRESS_INTERVAL_MS)
+
+Default interval:
+  5000 ms
+
+If Python inference is not running, ticks fail with fetch errors, but the Node server
+continues running. Once inference starts, future ticks can succeed.
+
+
+processSimulatedTick() in server.js
+-----------------------------------
+Flow:
+  1. Get next row from CsvFeed.
+  2. Send reading to Python /predict.
+  3. Receive stress category.
+  4. Create observedAt timestamp.
+  5. Append to simulated TelemetryState.
+  6. Log to MongoDB if category >= 1 and MongoDB is enabled.
+  7. Return snapshot.
+
+
+processRealTick() in server.js
+------------------------------
+Flow:
+  1. Fetch JSON from Firebase URL.
+  2. If there is no data or accX is missing, skip.
+  3. Map Firebase fields:
+     accX -> x
+     accY -> y
+     accZ -> z
+     gsr -> eda
+     pulse -> hr
+     temperature -> temp
+  4. Convert missing/non-numeric fields to 0.
+  5. Send reading to Python /predict.
+  6. Append result to real TelemetryState.
+  7. Log to MongoDB if category >= 1 and MongoDB is enabled.
+
+
+predict() in server.js
+----------------------
+Purpose:
+  Calls Python FastAPI inference service.
+
+Request:
+  POST {STRESS_INFERENCE_BASE_URL}/predict
+
+Headers:
+  Content-Type: application/json
+
+Body:
+  { x, y, z, eda, hr, temp }
+
+If inference is unavailable, it throws an error with this instruction:
+  Start Python with:
+  python -m uvicorn inference_service.main:app --host 127.0.0.1 --port 8081
+
+
+Frontend files
+--------------
+The old Flutter frontend was replaced with plain browser files:
+
+node-app/public/index.html
+node-app/public/styles.css
+node-app/public/app.js
+
+This is intentionally lightweight:
+  - No frontend framework.
+  - No build step.
+  - No Flutter SDK required.
+  - No charting library required.
+  - Browser loads static files directly from Express.
+
+
+node-app/public/index.html
+--------------------------
+Purpose:
+  Provides the dashboard structure.
+
+Major sections:
+  1. Hero header:
+     - Title: Real-time stress detection dashboard
+     - Status card for API/inference info
+
+  2. Telemetry feed panel:
+     - Source tabs:
+       Simulated
+       Real Device
+     - Current prediction card
+     - Last updated card
+     - Sensor chart grid
+
+  3. Two-column section:
+     - Latest sensor values
+     - MongoDB stress event history
+
+  4. Architecture panel:
+     CSV / Firebase -> Node.js API -> Python ML model -> Dashboard -> MongoDB logs
+
+Loaded assets:
+  /styles.css
+  /app.js as module
+
+
+node-app/public/styles.css
+--------------------------
+Purpose:
+  Makes the dashboard look professional and responsive.
+
+Design choices:
+  - Light theme.
+  - Soft blue/gray background.
+  - Large hero title.
+  - Card-based UI.
+  - Rounded panels.
+  - Subtle shadows.
+  - Glass-like white cards.
+  - Responsive layout for mobile/tablet.
+
+Stress status colors:
+  No Stress:
+    green soft background
+
+  Mild Stress:
+    amber/yellow soft background
+
+  High Stress:
+    red soft background
+
+Responsive behavior:
+  - Desktop: 3 sensor chart cards per row.
+  - Medium screens: 2 per row.
+  - Small screens: 1 per row.
+  - Header and panels collapse into single-column layout.
+
+
+node-app/public/app.js
+----------------------
+Purpose:
+  Provides all dashboard interactivity.
+
+Important behavior:
+  - Defines the six sensors:
+    X, Y, Z, EDA, HR, TEMP
+  - Default source is simulated.
+  - Checks /api/health on page load.
+  - Loads current source snapshot.
+  - Loads current source history.
+  - Polls latest telemetry every 5 seconds.
+  - Switches between simulated and real sources using tabs.
+  - Renders latest values.
+  - Renders prediction card.
+  - Renders MongoDB history list.
+  - Draws simple line charts using canvas.
+
+Key frontend API calls:
+  GET /api/health
+  GET /api/telemetry/{source}/latest
+  GET /api/telemetry/{source}/history?limit=20
+
+Chart rendering:
+  - Uses <canvas>.
+  - Scales for devicePixelRatio.
+  - Draws grid lines.
+  - Computes min/max from visible points.
+  - Draws a colored line per sensor.
+
+Frontend source values:
+  source = "simulated" or "real"
+
+CSS classes for stress:
+  no-stress
+  mild-stress
+  high-stress
+
+
+Run commands
+------------
+Local run requires two processes.
+
+Terminal 1 - Python inference:
+  pip install -r inference_service/requirements.txt
+  python -m uvicorn inference_service.main:app --host 127.0.0.1 --port 8081
+
+Terminal 2 - Node dashboard/API:
+  cd node-app
+  npm install
+  npm start
+
+Open dashboard:
+  http://localhost:8090
+
+
+start_all.bat
+-------------
+This file was updated to start only:
+  1. Python inference service
+  2. Node.js dashboard/API
+
+It no longer starts:
+  - wrist.py
+  - Spring Boot
+  - Flutter
+
+Current behavior:
+  - Opens Python inference in one cmd window.
+  - Opens Node dashboard/API in another cmd window.
+  - Tells user to open http://localhost:8090.
+
+
+Docker changes
+--------------
+docker/Dockerfile.node was added.
+
+Purpose:
+  Builds the Node dashboard/API container.
+
+Base image:
+  node:22-alpine
+
+Important steps:
+  - Workdir: /app
+  - Copy node-app/package*.json
+  - Run npm ci --omit=dev
+  - Copy node-app/
+  - Copy balanced_data.csv
+  - Workdir: /app/node-app
+  - Set NODE_ENV=production
+  - Set PORT=8090
+  - Set STRESS_CSV_PATH=/app/balanced_data.csv
+  - Expose 8090
+  - Healthcheck GET http://127.0.0.1:8090/api/health
+  - CMD npm start
+
+
+docker-compose.yml
+------------------
+Updated from Spring backend to Node app.
+
+Current services:
+
+1. inference
+   - Build file: docker/Dockerfile.inference
+   - Image: stress-detection-inference:latest
+   - Port: 8081:8081
+   - Role: Python ML inference
+
+2. app
+   - Build file: docker/Dockerfile.node
+   - Image: stress-detection-node:latest
+   - Port: 8090:8090
+   - Role: Node.js dashboard/API
+   - Environment:
+     STRESS_INFERENCE_BASE_URL=http://inference:8081
+     STRESS_CSV_PATH=/app/balanced_data.csv
+     STRESS_INTERVAL_MS=5000
+     STRESS_CHART_HISTORY_SIZE=60
+     MONGODB_URI=${MONGODB_URI:-}
+   - Depends on inference healthcheck
+
+Docker run:
+  docker compose up --build
+
+Dashboard:
+  http://localhost:8090
+
+Inference docs:
+  http://localhost:8081/docs
+
+
+README.md
+---------
+Added a new root README.md documenting:
+  - New architecture.
+  - Local run instructions.
+  - API endpoints.
+  - Configuration variables.
+  - Docker command.
+
+
+DOCKER.md
+---------
+Updated from Spring/Flutter wording to Node/Python wording.
+
+It now documents:
+  - inference container
+  - app container
+  - Node dashboard/API on 8090
+  - Python inference on 8081
+  - MongoDB Atlas optional persistence
+
+
+HOSTING.md
+----------
+Updated from public Flutter/Spring deployment instructions to Node/Python deployment.
+
+It now says:
+  - Public users access the Node dashboard/API.
+  - Python inference should preferably remain private/internal.
+  - Put HTTPS in front of the Node app.
+  - Use STRESS_INFERENCE_BASE_URL for internal inference networking.
+
+
+.env.example
+------------
+Updated with Node-specific environment variables.
+
+Current example:
+  MONGODB_URI=mongodb+srv://USER:PASSWORD@cluster0.enwyvnr.mongodb.net/Stress_Detection?retryWrites=true&w=majority
+  PORT=8090
+  STRESS_INFERENCE_BASE_URL=http://127.0.0.1:8081
+  STRESS_INTERVAL_MS=5000
+  STRESS_CHART_HISTORY_SIZE=60
+
+
+.dockerignore
+-------------
+Cleaned up old Java/Flutter entries.
+
+Now ignores:
+  .git
+  .gitignore
+  OS junk
+  node-app/node_modules/
+  npm-debug.log*
+  Python cache/venv files
+  .env
+  random_forest_model.pkl
+
+
+.gitignore
+----------
+Cleaned up old Spring entries.
+
+Kept or added:
+  .env
+  Python cache/venv
+  IDE files
+  CSV/model ignores
+  node_modules/
+  node-app/node_modules/
+
+
+tools/check_stresslog.py
+------------------------
+Updated because the old version read Spring Boot application-local.yml.
+
+Current behavior:
+  - Reads MONGODB_URI from environment or root .env file.
+  - Connects to database:
+    Stress_Detection
+  - Checks both collections:
+    stress_log_simulated
+    stress_log_real
+  - Prints total document count and last 5 documents from each collection.
+
+
+Removed old stack details
+-------------------------
+The old Flutter app is no longer present:
+  flutter_app/ was removed.
+
+The old Spring Boot backend is no longer present:
+  spring-backend/ was removed.
+
+The old Spring Dockerfile is no longer present:
+  docker/Dockerfile.spring was removed.
+
+The old Flutter/Spring backend doc is no longer present:
+  FLUTTER_BACKEND.md was removed.
+
+The new source of truth for implementation is:
+  README.md
+  node-app/src/server.js
+  node-app/public/
+  docker-compose.yml
+  DOCKER.md
+  HOSTING.md
+  this file
+
+
+Validation already performed
+----------------------------
+These checks were performed after implementation:
+
+1. Node syntax check:
+   cd node-app
+   node --check src/server.js
+
+   Result:
+   Passed.
+
+2. Node API smoke test:
+   npm start
+   GET http://127.0.0.1:8090/api/health
+
+   Result:
+   Returned:
+   {
+     "status": "ok",
+     "service": "stress-detection-node",
+     "inferenceBaseUrl": "http://127.0.0.1:8081"
+   }
+
+3. Linter diagnostics:
+   Checked node-app/src/server.js and node-app/public/app.js.
+
+   Result:
+   No linter errors found.
+
+Note:
+  During smoke testing, the Node server was manually stopped after confirming the
+  health endpoint. This produced a non-zero exit notification, but it was expected
+  because the test server process was intentionally terminated.
+
+
+Known operational notes
+-----------------------
+1. The Node app can start even if Python inference is not running.
+   In that case, scheduled telemetry ticks log fetch failures until Python starts.
+
+2. Full prediction flow requires Python inference running on port 8081.
+
+3. MongoDB is optional.
+   If MONGODB_URI is not set, the dashboard still works, but history will show an
+   empty message and no stress events are persisted.
+
+4. Real device data depends on Firebase.
+   If Firebase is unavailable or missing accX, the real source may not update.
+
+5. The frontend polls every 5 seconds.
+   The backend scheduler also processes data every 5 seconds by default.
+
+6. The frontend chart is custom canvas code.
+   No external chart library is used.
+
+7. The Node app uses Express 5.
+   The catch-all route must use app.get(/.*/, ...) instead of app.get('*', ...).
+
+
+Potential improvement notes
+---------------------------
+These were not required but could be useful later:
+
+1. Add authentication before hosting publicly.
+2. Add rate limiting if exposing the API online.
+3. Add WebSocket/SSE updates instead of frontend polling.
+4. Add a Docker Compose profile that hides inference port 8081 from the host.
+5. Add a production reverse proxy such as Caddy or nginx for HTTPS.
+6. Add tests for API endpoints and telemetry transformation.
+7. Add a manual input panel for custom sensor values.
+8. Add model confidence/probability if Python /predict is extended to return it.
+
+
+Summary for Gemini
+------------------
+This project is now a lightweight full-stack stress detection dashboard:
+
+  Python FastAPI service = ML model inference.
+  Node.js Express app = backend API, schedulers, dashboard host, MongoDB logging.
+  Static HTML/CSS/JS = professional frontend UI.
+
+The central implementation file is:
+  node-app/src/server.js
+
+The dashboard frontend files are:
+  node-app/public/index.html
+  node-app/public/styles.css
+  node-app/public/app.js
+
+Run locally by starting Python inference first, then Node:
+  python -m uvicorn inference_service.main:app --host 127.0.0.1 --port 8081
+  cd node-app
+  npm start
+
+Open:
+  http://localhost:8090
